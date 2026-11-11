@@ -1,12 +1,18 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "~/db";
 import {
+  courses,
   coupons,
+  enrollments,
   lessonProgress,
   lessons,
   modules,
   purchases,
+  quizAnswers,
+  quizAttempts,
+  quizzes,
   refunds,
+  users,
   videoWatchEvents,
   LessonProgressStatus,
   RefundStatus,
@@ -61,6 +67,35 @@ function hasClaimedSeat(purchaseId: number) {
     )
     .get();
   return row !== undefined;
+}
+
+function isTeamLicence(purchaseId: number) {
+  const row = db
+    .select({ id: coupons.id })
+    .from(coupons)
+    .where(eq(coupons.purchaseId, purchaseId))
+    .get();
+  return row !== undefined;
+}
+
+/**
+ * Whether the learner has ever had a Refund for a personal Purchase of this
+ * course. Refunding a Team Licence does not count.
+ */
+function hasHadPersonalRefund(userId: number, courseId: number) {
+  const approved = db
+    .select({ purchaseId: purchases.id })
+    .from(refunds)
+    .innerJoin(purchases, eq(refunds.purchaseId, purchases.id))
+    .where(
+      and(
+        eq(purchases.userId, userId),
+        eq(purchases.courseId, courseId),
+        eq(refunds.status, RefundStatus.Approved)
+      )
+    )
+    .all();
+  return approved.some((row) => !isTeamLicence(row.purchaseId));
 }
 
 function getLessonIdsForCourse(courseId: number): number[] {
@@ -146,6 +181,12 @@ export function getRefundEligibility(
     return ineligible("This purchase has already been refunded.");
   }
 
+  // Erasing progress on a Refund resets the limits below, so a learner only
+  // ever gets one Refund per course. See docs/adr/0001.
+  if (hasHadPersonalRefund(userId, courseId)) {
+    return ineligible("You have already had a refund for this course.");
+  }
+
   const purchasedDay = asCalendarDay(new Date(purchase.createdAt));
   const windowEnd = new Date(purchase.createdAt);
   windowEnd.setDate(windowEnd.getDate() + REFUND_WINDOW_DAYS);
@@ -186,4 +227,242 @@ export function getRefundEligibility(
     amount: purchase.amountPaid,
     lastDayOfRefundWindow,
   };
+}
+
+// ─── Resolving Refund Requests ───
+
+export type RefundProgress = {
+  completedLessons: number;
+  totalLessons: number;
+  secondsWatched: number;
+  /** Past a Refund Eligibility limit now, even if they weren't when asking. */
+  overLimit: boolean;
+};
+
+function getProgress(userId: number, courseId: number): RefundProgress {
+  const lessonIds = getLessonIdsForCourse(courseId);
+  const completedLessons = getCompletedLessonCount(userId, lessonIds);
+  const secondsWatched = getSecondsWatched(userId, lessonIds);
+  const overLimit =
+    (lessonIds.length > 0 &&
+      completedLessons / lessonIds.length >= COMPLETION_LIMIT) ||
+    secondsWatched >= WATCHED_SECONDS_LIMIT;
+  return {
+    completedLessons,
+    totalLessons: lessonIds.length,
+    secondsWatched,
+    overLimit,
+  };
+}
+
+/** Every Requested Refund Request, oldest first, with live progress. */
+export function getRequestedRefunds() {
+  const rows = db
+    .select({
+      id: refunds.id,
+      reason: refunds.reason,
+      requestedAt: refunds.requestedAt,
+      purchaseId: purchases.id,
+      amount: purchases.amountPaid,
+      purchasedAt: purchases.createdAt,
+      learnerId: users.id,
+      learnerName: users.name,
+      learnerEmail: users.email,
+      courseId: courses.id,
+      courseTitle: courses.title,
+      courseSlug: courses.slug,
+    })
+    .from(refunds)
+    .innerJoin(purchases, eq(refunds.purchaseId, purchases.id))
+    .innerJoin(users, eq(purchases.userId, users.id))
+    .innerJoin(courses, eq(purchases.courseId, courses.id))
+    .where(eq(refunds.status, RefundStatus.Requested))
+    .orderBy(refunds.requestedAt, refunds.id)
+    .all();
+
+  return rows.map((row) => {
+    const teamLicence = isTeamLicence(row.purchaseId);
+    return {
+      ...row,
+      isTeamLicence: teamLicence,
+      hasClaimedSeat: teamLicence && hasClaimedSeat(row.purchaseId),
+      // A Team Licence buyer doesn't take the course through it.
+      progress: teamLicence ? null : getProgress(row.learnerId, row.courseId),
+    };
+  });
+}
+
+export type RefundResolution =
+  | {
+      ok: true;
+      learner: { name: string; email: string };
+      courseTitle: string;
+      amount: number;
+      isTeamLicence: boolean;
+    }
+  | { ok: false; reason: string; status: 404 | 409 };
+
+function getRefundRequestDetails(refundId: number) {
+  return db
+    .select({
+      status: refunds.status,
+      purchaseId: purchases.id,
+      amount: purchases.amountPaid,
+      learnerId: users.id,
+      learnerName: users.name,
+      learnerEmail: users.email,
+      courseId: courses.id,
+      courseTitle: courses.title,
+    })
+    .from(refunds)
+    .innerJoin(purchases, eq(refunds.purchaseId, purchases.id))
+    .innerJoin(users, eq(purchases.userId, users.id))
+    .innerJoin(courses, eq(purchases.courseId, courses.id))
+    .where(eq(refunds.id, refundId))
+    .get();
+}
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Removes the learner's access to the course and erases their progress in it. */
+function revokeAccessAndEraseProgress(
+  tx: Tx,
+  userId: number,
+  courseId: number
+) {
+  const lessonIds = getLessonIdsForCourse(courseId);
+
+  if (lessonIds.length > 0) {
+    const attemptIds = tx
+      .select({ id: quizAttempts.id })
+      .from(quizAttempts)
+      .innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id))
+      .where(
+        and(
+          eq(quizAttempts.userId, userId),
+          inArray(quizzes.lessonId, lessonIds)
+        )
+      )
+      .all()
+      .map((row) => row.id);
+
+    if (attemptIds.length > 0) {
+      tx.delete(quizAnswers)
+        .where(inArray(quizAnswers.attemptId, attemptIds))
+        .run();
+      tx.delete(quizAttempts).where(inArray(quizAttempts.id, attemptIds)).run();
+    }
+
+    tx.delete(lessonProgress)
+      .where(
+        and(
+          eq(lessonProgress.userId, userId),
+          inArray(lessonProgress.lessonId, lessonIds)
+        )
+      )
+      .run();
+
+    tx.delete(videoWatchEvents)
+      .where(
+        and(
+          eq(videoWatchEvents.userId, userId),
+          inArray(videoWatchEvents.lessonId, lessonIds)
+        )
+      )
+      .run();
+  }
+
+  tx.delete(enrollments)
+    .where(
+      and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
+    )
+    .run();
+}
+
+function resolve(
+  refundId: number,
+  adminId: number,
+  status: RefundStatus.Approved | RefundStatus.Declined,
+  now: Date
+): RefundResolution {
+  const request = getRefundRequestDetails(refundId);
+
+  if (!request) {
+    return { ok: false, reason: "Refund Request not found.", status: 404 };
+  }
+
+  if (request.status !== RefundStatus.Requested) {
+    return {
+      ok: false,
+      reason: "This Refund Request has already been resolved.",
+      status: 409,
+    };
+  }
+
+  const teamLicence = isTeamLicence(request.purchaseId);
+
+  if (
+    status === RefundStatus.Approved &&
+    teamLicence &&
+    hasClaimedSeat(request.purchaseId)
+  ) {
+    return {
+      ok: false,
+      reason: "A team licence with a claimed seat cannot be refunded.",
+      status: 409,
+    };
+  }
+
+  db.transaction((tx) => {
+    tx.update(refunds)
+      .set({
+        status,
+        amountRefunded:
+          status === RefundStatus.Approved ? request.amount : null,
+        resolvedAt: now.toISOString(),
+        resolvedByUserId: adminId,
+      })
+      .where(eq(refunds.id, refundId))
+      .run();
+
+    // A Team Licence buyer isn't enrolled through it, so there is no access
+    // or progress of theirs to take away; its unclaimed Seats stop working.
+    if (status === RefundStatus.Approved && !teamLicence) {
+      revokeAccessAndEraseProgress(tx, request.learnerId, request.courseId);
+    }
+  });
+
+  return {
+    ok: true,
+    learner: { name: request.learnerName, email: request.learnerEmail },
+    courseTitle: request.courseTitle,
+    amount: request.amount,
+    isTeamLicence: teamLicence,
+  };
+}
+
+/**
+ * Approve a Refund Request: the Purchase becomes Refunded, and the learner
+ * loses access to the course and their progress in it.
+ */
+export function approveRefundRequest(
+  refundId: number,
+  adminId: number,
+  now: Date = new Date()
+) {
+  return resolve(refundId, adminId, RefundStatus.Approved, now);
+}
+
+/** Decline a Refund Request: nothing is returned and the learner keeps access. */
+export function declineRefundRequest(
+  refundId: number,
+  adminId: number,
+  now: Date = new Date()
+) {
+  return resolve(refundId, adminId, RefundStatus.Declined, now);
+}
+
+/** Whether this Purchase has had a Refund. */
+export function isPurchaseRefunded(purchaseId: number) {
+  return hasRefundRequestIn(purchaseId, RefundStatus.Approved);
 }

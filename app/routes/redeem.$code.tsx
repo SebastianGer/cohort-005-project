@@ -13,6 +13,9 @@ import { data } from "react-router";
 import { db } from "~/db";
 import { purchases, coupons, courses, enrollments } from "~/db/schema";
 import { eq, and } from "drizzle-orm";
+import { isPurchaseRefunded } from "~/lib/refunds.server";
+
+const LICENCE_REFUNDED = "This team licence was refunded, so its seats can no longer be claimed.";
 
 function getCourseById(id: number) {
   return db.select().from(courses).where(eq(courses.id, id)).get();
@@ -50,6 +53,10 @@ function redeemCoupon(
 
   if (coupon.redeemedByUserId !== null) {
     return { ok: false, error: "Coupon has already been redeemed" };
+  }
+
+  if (isPurchaseRefunded(coupon.purchaseId)) {
+    return { ok: false, error: LICENCE_REFUNDED };
   }
 
   const existingEnrollment = db
@@ -120,6 +127,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const coupon = getCouponByCode(code);
   if (!coupon) {
     throw data("Coupon not found.", { status: 404 });
+  }
+
+  if (coupon.redeemedByUserId === null && isPurchaseRefunded(coupon.purchaseId)) {
+    throw data(LICENCE_REFUNDED, { status: 410 });
   }
 
   const currentUserId = await getCurrentUserId(request);

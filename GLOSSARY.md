@@ -26,6 +26,16 @@ _Avoid_: Coupon, Code
 The state of a Seat that a team member has taken for themselves.
 _Avoid_: Redeemed
 
+**Team Leader**:
+The member of a team who manages its Team Licence and hands out its Seats.
+_Avoid_: Team admin, Team owner
+
+## Running Cadence
+
+**Admin**:
+A Cadence staff member who runs the platform, including resolving Refund Requests. Being an Admin is not tied to any course or team.
+_Avoid_: Team admin, Moderator, Staff
+
 ## Refunds
 
 **Refund Request**:
@@ -46,7 +56,7 @@ The state of a Refund Request that an admin has turned down. Nothing is returned
 A Refund Request that is no longer Requested, because it was Approved or Declined.
 
 **Refund**:
-The return of the full amount paid for a Purchase, following an Approved Refund Request. A Refund removes the learner's access to the course. A Team Licence is only ever refunded whole, and only while none of its Seats are Claimed.
+The return of the full amount paid for a Purchase, following an Approved Refund Request. A Refund removes the learner's access to the course and erases their progress in it. A Team Licence is only ever refunded whole, and only while none of its Seats are Claimed.
 _Avoid_: Reversal, Chargeback, Cancellation
 
 **Refunded**:
@@ -54,7 +64,7 @@ The state of a Purchase that has had a Refund.
 _Avoid_: Cancelled, Reversed
 
 **Refund Eligibility**:
-Whether a learner can still make a Refund Request for a Purchase. A learner whose Refund Request was Declined may make another one while they are still eligible.
+Whether a learner can still make a Refund Request for a Purchase. A learner whose Refund Request was Declined may make another one while they are still eligible. A learner who has already had a Refund for a course is never eligible again for that course; a Refund of a Team Licence does not count.
 _Avoid_: Cancellation offer, Cancellable
 
 **Refund Window**:

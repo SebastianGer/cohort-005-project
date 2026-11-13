@@ -381,10 +381,10 @@ export const bookmarks = sqliteTable(
     id: integer("id").primaryKey({ autoIncrement: true }),
     userId: integer("user_id")
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: "cascade" }),
     lessonId: integer("lesson_id")
       .notNull()
-      .references(() => lessons.id),
+      .references(() => lessons.id, { onDelete: "cascade" }),
     createdAt: text("created_at")
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
@@ -400,10 +400,10 @@ export const notes = sqliteTable(
     id: integer("id").primaryKey({ autoIncrement: true }),
     userId: integer("user_id")
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: "cascade" }),
     lessonId: integer("lesson_id")
       .notNull()
-      .references(() => lessons.id),
+      .references(() => lessons.id, { onDelete: "cascade" }),
     // Plain text, capped on write. Never rendered as Markdown.
     body: text("body").notNull(),
     createdAt: text("created_at")

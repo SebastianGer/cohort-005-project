@@ -119,6 +119,7 @@ export function DevUI({
                   key={user.id}
                   method="post"
                   action={`/api/switch-user?redirectTo=${encodeURIComponent(location.pathname + location.search)}`}
+                  onSubmit={() => setOpen(false)}
                 >
                   <input type="hidden" name="userId" value={user.id} />
                   <button

@@ -25,7 +25,7 @@ export function CourseContent({
   };
   canView: boolean;
   isInstructor: boolean;
-  lessonProgressMap: Record<number, string>;
+  lessonProgressMap: Record<number, LessonProgressStatus>;
 }) {
   return (
     <div>

@@ -1,4 +1,4 @@
-import type { lessons } from "~/db/schema";
+import type { LessonProgressStatus, lessons } from "~/db/schema";
 import type { DenialReason } from "~/modules/permissions/course-permissions.server";
 import type { RenderedComment } from "~/lib/rendered-comment";
 
@@ -50,7 +50,7 @@ export type FullLessonView = {
   module: ModuleRef;
   lesson: typeof lessons.$inferSelect;
   contentHtml: string | null;
-  lessonStatus: string | null;
+  lessonStatus: LessonProgressStatus | null;
   enrolled: boolean;
   currentUserId: number | null;
   prevLesson: NeighbourLesson | null;
@@ -59,7 +59,7 @@ export type FullLessonView = {
   bestAttempt: { score: number; passed: boolean } | null;
   lastWatchPosition: number;
   watchProgress: number;
-  lessonProgressMap: Record<number, string>;
+  lessonProgressMap: Record<number, LessonProgressStatus>;
   comments: RenderedComment[];
   canModerate: boolean;
   instructorName: string;

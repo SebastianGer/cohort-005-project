@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { Route } from "./+types/courses.$slug";
 import { coursePermissions } from "~/modules/permissions/course-permissions.server";
 import { db } from "~/db";
+import type { LessonProgressStatus } from "~/db/schema";
 import { getRefundOffer, type RefundOffer } from "~/lib/refunds.server";
 import { Card, CardContent, CardHeader } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -85,7 +86,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const lessonCount = getLessonCountForCourse(course.id);
 
   let progress = 0;
-  const lessonProgressMap: Record<number, string> = {};
+  const lessonProgressMap: Record<number, LessonProgressStatus> = {};
   let nextLessonId: number | null = null;
   let refundOffer: RefundOffer | null = null;
 

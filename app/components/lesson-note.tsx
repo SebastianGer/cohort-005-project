@@ -5,7 +5,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Textarea } from "~/components/ui/textarea";
 import { cn, formatRelativeTime } from "~/lib/utils";
-import { describeNoteDraft } from "~/modules/lesson-notes";
+import { describeNoteDraft, type NoteDraft } from "~/modules/lesson-notes";
 
 export type SavedNote = { body: string; updatedAt: string };
 
@@ -43,7 +43,7 @@ export function LessonNote({ note }: { note: SavedNote | null }) {
             </Button>
             <NoteStatus
               error={error}
-              dirty={draft.dirty}
+              draft={draft}
               updatedAt={note?.updatedAt}
             />
             <span
@@ -76,15 +76,21 @@ function NoteHeader() {
 
 function NoteStatus({
   error,
-  dirty,
+  draft,
   updatedAt,
 }: {
   error: string | undefined;
-  dirty: boolean;
+  draft: NoteDraft;
   updatedAt: string | undefined;
 }) {
   if (error) return <span className="text-sm text-destructive">{error}</span>;
-  if (dirty)
+  if (draft.dirty && draft.empty)
+    return (
+      <span className="text-xs text-muted-foreground">
+        Write something before saving
+      </span>
+    );
+  if (draft.dirty)
     return (
       <span className="text-xs text-muted-foreground">Unsaved changes</span>
     );

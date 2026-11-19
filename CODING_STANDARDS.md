@@ -107,6 +107,25 @@ const [items, setItems] = useState(rows);
 const count = items.length;
 ```
 
+State seeded from a prop outlives that prop. When a component copies a record
+into `useState`, key the component by that record's id, so a new record
+remounts it with fresh state.
+
+```tsx
+// Bad: moving to the next lesson keeps the last lesson's draft
+<LessonNote note={note} />
+
+// Good
+<LessonNote key={lesson.id} note={note} />
+```
+
+## A client-side check reuses the server's rule
+
+When a form checks input before submitting (a length limit, trimming, a blank
+check), it calls the same function the server uses. A copy drifts, and then the
+form blocks what the server accepts, or the other way round. Put the rule in a
+client-safe file (`app/lib/*.ts`, not `*.server.ts`) and import it from both.
+
 ## A comment explains why
 
 Name and extract until a comment is unnecessary. A comment earns its place

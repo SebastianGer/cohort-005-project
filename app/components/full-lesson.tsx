@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useFetcher, useNavigate } from "react-router";
-import type { Route } from "../routes/+types/courses.$slug.lessons.$lessonId";
+import type { FullLessonView } from "~/lib/lesson-view";
 import { CommentThread } from "~/components/comment-thread";
 import { LessonProgressStatus } from "~/db/schema";
 import { Button } from "~/components/ui/button";
@@ -20,8 +20,6 @@ import { LessonNote } from "~/components/lesson-note";
 import { CurriculumSidebar } from "~/components/curriculum-sidebar";
 import { LessonBreadcrumb } from "~/components/lesson-breadcrumb";
 import { QuizSection } from "~/components/lesson-quiz";
-
-type LessonLoaderData = Route.ComponentProps["loaderData"];
 
 const AUTOPLAY_KEY = "cadence-autoplay";
 
@@ -51,11 +49,7 @@ function useAutoplay() {
   return [enabled, toggle] as const;
 }
 
-export function FullLesson({
-  data,
-}: {
-  data: Extract<LessonLoaderData, { view: "full" }>;
-}) {
+export function FullLesson({ data }: { data: FullLessonView }) {
   const {
     course,
     curriculum,

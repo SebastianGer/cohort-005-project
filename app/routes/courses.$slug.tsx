@@ -25,6 +25,7 @@ import {
   ShieldAlert,
   Users,
 } from "lucide-react";
+import { BlockLink } from "~/components/block-link";
 import { CourseImage } from "~/components/course-image";
 import { UserAvatar } from "~/components/user-avatar";
 import { data, isRouteErrorResponse } from "react-router";
@@ -467,7 +468,7 @@ export default function CourseDetail({ loaderData }: Route.ComponentProps) {
                           const targetLessonId =
                             nextLessonId ?? course.modules[0].lessons[0]?.id;
                           return targetLessonId ? (
-                            <Link
+                            <BlockLink
                               to={`/courses/${course.slug}/lessons/${targetLessonId}`}
                             >
                               <Button className="w-full">
@@ -476,17 +477,17 @@ export default function CourseDetail({ loaderData }: Route.ComponentProps) {
                                   ? "Continue Learning"
                                   : "Start Course"}
                               </Button>
-                            </Link>
+                            </BlockLink>
                           ) : null;
                         })()}
                     </>
                   )}
-                  <Link to={teamPurchaseLink}>
+                  <BlockLink to={teamPurchaseLink}>
                     <Button variant="outline" className="w-full">
                       <Users className="mr-2 size-4" />
                       Buy More Seats
                     </Button>
-                  </Link>
+                  </BlockLink>
                   {canTake && <RateCourse userRating={userRating} />}
                   {refundOffer && (
                     <RequestRefund

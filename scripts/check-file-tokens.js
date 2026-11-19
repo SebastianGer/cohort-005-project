@@ -53,6 +53,13 @@ How to split:
 - Scripts and seed data: move large data literals into their own files and
   import them.
 
-When you are done, run \`npm run check\` and commit again.`);
+Commit the split on its own, before your change, so a reviewer can read the
+move and the change separately:
+
+1. \`git stash\` to set your change aside.
+2. Split the file as a pure move: only imports and \`export\` keywords change.
+3. Run \`npm run check\`, then commit with a subject that says it is a move,
+   e.g. "Split <file> into <files>, no behaviour change".
+4. \`git stash pop\`, fix any conflicts, and commit your change on top.`);
   process.exit(1);
 }

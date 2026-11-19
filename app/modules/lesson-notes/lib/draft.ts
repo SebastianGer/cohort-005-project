@@ -14,12 +14,12 @@ export function summariseDraft(
   savedBody: string | null,
   max: number = MAX_NOTE_LENGTH
 ): NoteDraft {
-  const length = draft.length;
-  const tooLong = length > max;
-  // Saving trims the note and rejects a blank one, so compare what would be
+  // Saving trims the note and rejects a blank one, so judge what would be
   // stored, not what was typed.
   const stored = draft.trim();
-  const empty = stored.length === 0;
+  const length = stored.length;
+  const tooLong = length > max;
+  const empty = length === 0;
   const dirty = stored !== (savedBody ?? "");
   return {
     length,

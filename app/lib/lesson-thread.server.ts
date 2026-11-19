@@ -5,7 +5,7 @@ import { asc, eq } from "drizzle-orm";
 import { renderComment } from "~/lib/comment-markdown.server";
 import { markdown, type Markdown } from "~/lib/text";
 import { getCourseForLesson } from "~/lib/lesson-viewer.server";
-import type { RenderedComment } from "~/components/comment-thread";
+import type { RenderedComment } from "~/lib/rendered-comment";
 
 export type CommentAuthor = {
   id: number;

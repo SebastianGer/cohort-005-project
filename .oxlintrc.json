@@ -147,6 +147,8 @@
     {
       "files": [
         "app/components/comment-thread.tsx",
+        "app/components/course-content.tsx",
+        "app/components/course-sidebar-actions.tsx",
         "app/components/curriculum-sidebar.tsx",
         "app/components/dev-ui.tsx",
         "app/components/full-lesson.tsx",
@@ -159,6 +161,7 @@
         "app/components/ui/chart.tsx",
         "app/components/youtube-player.tsx",
         "app/lib/comments.server.ts",
+        "app/lib/course-detail.server.ts",
         "app/lib/lesson-quiz.server.ts",
         "app/lib/lesson-thread.server.ts",
         "app/lib/lesson-viewer.server.ts",

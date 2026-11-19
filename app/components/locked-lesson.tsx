@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import type { Route } from "../routes/+types/courses.$slug.lessons.$lessonId";
+import type { LockedLessonView } from "~/lib/lesson-view";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { MapPin, ShieldAlert } from "lucide-react";
@@ -7,12 +7,10 @@ import { countryName } from "~/lib/ppp";
 import { CurriculumSidebar } from "~/components/curriculum-sidebar";
 import { LessonBreadcrumb } from "~/components/lesson-breadcrumb";
 
-type LessonLoaderData = Route.ComponentProps["loaderData"];
-
 export function LockedLesson({
   data: { course, curriculum, module: mod, lesson, enrolled, lockedReason },
 }: {
-  data: Extract<LessonLoaderData, { view: "locked" }>;
+  data: LockedLessonView;
 }) {
   const purchasePath = `/courses/${course.slug}/purchase`;
 
